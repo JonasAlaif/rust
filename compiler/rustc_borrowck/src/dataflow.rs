@@ -131,12 +131,12 @@ struct StackEntry {
     hi: usize,
 }
 
-struct OutOfScopePrecomputer<'a, 'tcx> {
+pub struct OutOfScopePrecomputer<'a, 'tcx> {
     visited: BitSet<mir::BasicBlock>,
     visit_stack: Vec<StackEntry>,
     body: &'a Body<'tcx>,
     regioncx: &'a RegionInferenceContext<'tcx>,
-    borrows_out_of_scope_at_location: FxIndexMap<Location, Vec<BorrowIndex>>,
+    pub borrows_out_of_scope_at_location: FxIndexMap<Location, Vec<BorrowIndex>>,
 }
 
 impl<'a, 'tcx> OutOfScopePrecomputer<'a, 'tcx> {
@@ -152,7 +152,7 @@ impl<'a, 'tcx> OutOfScopePrecomputer<'a, 'tcx> {
 }
 
 impl<'tcx> OutOfScopePrecomputer<'_, 'tcx> {
-    fn precompute_borrows_out_of_scope(
+    pub fn precompute_borrows_out_of_scope(
         &mut self,
         borrow_index: BorrowIndex,
         borrow_region: RegionVid,

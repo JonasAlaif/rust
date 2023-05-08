@@ -131,12 +131,12 @@ struct StackEntry {
     hi: usize,
 }
 
-pub struct OutOfScopePrecomputer<'a, 'tcx> {
+struct OutOfScopePrecomputer<'a, 'tcx> {
     visited: BitSet<mir::BasicBlock>,
     visit_stack: Vec<StackEntry>,
     body: &'a Body<'tcx>,
     regioncx: &'a RegionInferenceContext<'tcx>,
-    pub borrows_out_of_scope_at_location: FxIndexMap<Location, Vec<BorrowIndex>>,
+    borrows_out_of_scope_at_location: FxIndexMap<Location, Vec<BorrowIndex>>,
 }
 
 impl<'a, 'tcx> OutOfScopePrecomputer<'a, 'tcx> {
@@ -152,7 +152,7 @@ impl<'a, 'tcx> OutOfScopePrecomputer<'a, 'tcx> {
 }
 
 impl<'tcx> OutOfScopePrecomputer<'_, 'tcx> {
-    pub fn precompute_borrows_out_of_scope(
+    fn precompute_borrows_out_of_scope(
         &mut self,
         borrow_index: BorrowIndex,
         borrow_region: RegionVid,
@@ -231,27 +231,32 @@ impl<'tcx> OutOfScopePrecomputer<'_, 'tcx> {
     }
 }
 
+pub fn calculate_borrows_out_of_scope_at_location<'tcx>(
+    body: &Body<'tcx>,
+    regioncx: &RegionInferenceContext<'tcx>,
+    borrow_set: &BorrowSet<'tcx>,
+) -> FxIndexMap<Location, Vec<BorrowIndex>> {
+    let mut prec = OutOfScopePrecomputer::new(body, regioncx);
+    for (borrow_index, borrow_data) in borrow_set.iter_enumerated() {
+        let borrow_region = borrow_data.region.to_region_vid();
+        let location = borrow_data.reserve_location;
+
+        prec.precompute_borrows_out_of_scope(borrow_index, borrow_region, location);
+    }
+
+    prec.borrows_out_of_scope_at_location
+}
+
 impl<'a, 'tcx> Borrows<'a, 'tcx> {
-    pub(crate) fn new(
+    pub fn new(
         tcx: TyCtxt<'tcx>,
         body: &'a Body<'tcx>,
         nonlexical_regioncx: &'a RegionInferenceContext<'tcx>,
         borrow_set: &'a BorrowSet<'tcx>,
     ) -> Self {
-        let mut prec = OutOfScopePrecomputer::new(body, nonlexical_regioncx);
-        for (borrow_index, borrow_data) in borrow_set.iter_enumerated() {
-            let borrow_region = borrow_data.region;
-            let location = borrow_data.reserve_location;
-
-            prec.precompute_borrows_out_of_scope(borrow_index, borrow_region, location);
-        }
-
-        Borrows {
-            tcx,
-            body,
-            borrow_set,
-            borrows_out_of_scope_at_location: prec.borrows_out_of_scope_at_location,
-        }
+        let borrows_out_of_scope_at_location =
+            calculate_borrows_out_of_scope_at_location(body, nonlexical_regioncx, borrow_set);
+        Borrows { tcx, body, borrow_set, borrows_out_of_scope_at_location }
     }
 
     pub fn location(&self, idx: BorrowIndex) -> &Location {

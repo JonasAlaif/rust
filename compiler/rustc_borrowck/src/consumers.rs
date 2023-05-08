@@ -9,7 +9,7 @@ use rustc_middle::mir::Body;
 use rustc_middle::ty::TyCtxt;
 
 pub use super::{
-    dataflow::OutOfScopePrecomputer,
+    dataflow::{calculate_borrows_out_of_scope_at_location, BorrowIndex, Borrows},
     facts::{AllFacts as PoloniusInput, RustcFacts},
     location::{LocationTable, RichLocation},
     nll::PoloniusOutput,
@@ -28,9 +28,7 @@ pub enum ConsumerOptions {
     /// and [`RegionInferenceContext`]. If you would like the body only, use
     /// [`TyCtxt::mir_promoted`].
     ///
-    /// These can be used in conjunction with [`OutOfScopePrecomputer`] to
-    /// calculate a `borrows_out_of_scope_at_location` map. See implementation of
-    /// [`Borrows::new`](super::dataflow::Borrows::new).
+    /// These can be used in conjunction with [`calculate_borrows_out_of_scope_at_location`].
     RegionInferenceContext,
     /// The recommended option. Retrieves the maximal amount of information
     /// without significant slowdowns.
